@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: vedaai-mongo-prod
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: vedaai
+    networks:
+      - vedaai-net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: vedaai-redis-prod
+    restart: always
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    networks:
+      - vedaai-net
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    container_name: vedaai-api-prod
+    restart: always
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/vedaai
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      FRONTEND_URL: ${FRONTEND_URL}
+    networks:
+      - vedaai-net
+    ports:
+      - '4000:4000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: production
+    container_name: vedaai-web-prod
+    restart: always
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+    networks:
+      - vedaai-net
+    ports:
+      - '3000:3000'
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  vedaai-net:
+    driver: bridge
