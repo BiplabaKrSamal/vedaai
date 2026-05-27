@@ -11,30 +11,25 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: |
-      npm install -g pnpm@9.14.2
-      pnpm install --frozen-lockfile
-      pnpm --filter @vedaai/api build
+    buildCommand: npm install -g pnpm@9.14.2 && pnpm install --frozen-lockfile && pnpm --filter @vedaai/api build
     startCommand: node apps/api/dist/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000          # Render free tier always binds on 10000
+        value: 10000
       - key: ANTHROPIC_API_KEY
-        sync: false           # Must be set manually in Render dashboard
+        sync: false
       - key: MONGODB_URI
-        fromDatabase:
-          name: vedaai-mongo
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         fromService:
           name: vedaai-redis
           type: pserv
           property: connectionString
       - key: FRONTEND_URL
-        value: https://vedaai-web.onrender.com   # Update after web deploys
+        value: https://vedaai-web.onrender.com
 
   # ─────────────────────────────────────────────────────
   # Frontend  (Next.js standalone)
@@ -45,10 +40,7 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: |
-      npm install -g pnpm@9.14.2
-      pnpm install --frozen-lockfile
-      pnpm --filter @vedaai/web build
+    buildCommand: npm install -g pnpm@9.14.2 && pnpm install --frozen-lockfile && pnpm --filter @vedaai/web build
     startCommand: node apps/web/.next/standalone/apps/web/server.js
     healthCheckPath: /
     envVars:
@@ -59,12 +51,12 @@ services:
       - key: HOSTNAME
         value: 0.0.0.0
       - key: NEXT_PUBLIC_API_URL
-        value: https://vedaai-api.onrender.com   # Update to your API URL
+        value: https://vedaai-api.onrender.com
       - key: NEXT_PUBLIC_WS_URL
         value: wss://vedaai-api.onrender.com/ws
 
   # ─────────────────────────────────────────────────────
-  # Redis  (private service)
+  # Redis  (private Docker service)
   # ─────────────────────────────────────────────────────
   - type: pserv
     name: vedaai-redis
@@ -72,12 +64,3 @@ services:
     region: oregon
     plan: free
     dockerfilePath: ./docker/redis.dockerfile
-
-# ─────────────────────────────────────────────────────
-# PostgreSQL-style MongoDB via Render Managed Database
-# ─────────────────────────────────────────────────────
-databases:
-  - name: vedaai-mongo
-    databaseName: vedaai
-    region: oregon
-    plan: free
