@@ -1,46 +1,29 @@
-services:
-  # ─── Frontend (Next.js) ───────────────────────────────
-  - type: web
-    name: vedaai-web
-    runtime: node
-    region: oregon
-    plan: free
-    rootDir: .
-    buildCommand: npm install -g pnpm@9.14.2 && pnpm install --frozen-lockfile && pnpm --filter @vedaai/web build
-    startCommand: cd apps/web && node .next/standalone/apps/web/server.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: vedaai-api
-          type: web
-          property: host
-          format: https://{value}
-      - key: NEXT_PUBLIC_WS_URL
-        fromService:
-          name: vedaai-api
-          type: web
-          property: host
-          format: wss://{value}/ws
-    healthCheckPath: /
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# One-click deploy: https://render.com/deploy?repo=https://github.com/BiplabaKrSamal/vedaai
 
-  # ─── Backend (Express API) ────────────────────────────
+services:
+  # ─────────────────────────────────────────────────────
+  # Backend API  (Node.js + Express)
+  # ─────────────────────────────────────────────────────
   - type: web
     name: vedaai-api
     runtime: node
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: npm install -g pnpm@9.14.2 && pnpm install --frozen-lockfile && pnpm --filter @vedaai/api build
+    buildCommand: |
+      npm install -g pnpm@9.14.2
+      pnpm install --frozen-lockfile
+      pnpm --filter @vedaai/api build
     startCommand: node apps/api/dist/index.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 4000
+        value: 10000          # Render free tier always binds on 10000
       - key: ANTHROPIC_API_KEY
-        sync: false
+        sync: false           # Must be set manually in Render dashboard
       - key: MONGODB_URI
         fromDatabase:
           name: vedaai-mongo
@@ -48,24 +31,53 @@ services:
       - key: REDIS_URL
         fromService:
           name: vedaai-redis
-          type: redis
+          type: pserv
           property: connectionString
       - key: FRONTEND_URL
-        fromService:
-          name: vedaai-web
-          type: web
-          property: host
-          format: https://{value}
-    healthCheckPath: /health
+        value: https://vedaai-web.onrender.com   # Update after web deploys
 
-# ─── Databases ────────────────────────────────────────
+  # ─────────────────────────────────────────────────────
+  # Frontend  (Next.js standalone)
+  # ─────────────────────────────────────────────────────
+  - type: web
+    name: vedaai-web
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: .
+    buildCommand: |
+      npm install -g pnpm@9.14.2
+      pnpm install --frozen-lockfile
+      pnpm --filter @vedaai/web build
+    startCommand: node apps/web/.next/standalone/apps/web/server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: NEXT_PUBLIC_API_URL
+        value: https://vedaai-api.onrender.com   # Update to your API URL
+      - key: NEXT_PUBLIC_WS_URL
+        value: wss://vedaai-api.onrender.com/ws
+
+  # ─────────────────────────────────────────────────────
+  # Redis  (private service)
+  # ─────────────────────────────────────────────────────
+  - type: pserv
+    name: vedaai-redis
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./docker/redis.dockerfile
+
+# ─────────────────────────────────────────────────────
+# PostgreSQL-style MongoDB via Render Managed Database
+# ─────────────────────────────────────────────────────
 databases:
   - name: vedaai-mongo
     databaseName: vedaai
     region: oregon
     plan: free
-
-  - name: vedaai-redis
-    region: oregon
-    plan: free
-    ipAllowList: []
