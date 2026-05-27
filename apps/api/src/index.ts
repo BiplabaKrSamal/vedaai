@@ -9,22 +9,17 @@ import { startWorker } from './workers/generationWorker';
 const PORT = process.env.PORT || 4000;
 
 async function main() {
-  // Connect services
   await connectDB();
   await connectRedis();
 
-  // Create HTTP server (shared with WS)
   const server = http.createServer(app);
-
-  // Setup WebSocket
   setupWebSocket(server);
+  await startWorker();
 
-  // Start BullMQ worker
-  startWorker();
-
-  server.listen(PORT, () => {
-    console.log(`\n🚀 VedaAI API running on http://localhost:${PORT}`);
-    console.log(`🔌 WebSocket ready on ws://localhost:${PORT}`);
+  server.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`\n🚀 VedaAI API running on http://0.0.0.0:${PORT}`);
+    console.log(`🔌 WebSocket ready on ws://0.0.0.0:${PORT}`);
+    console.log(`🎭 Mode: ${process.env.ANTHROPIC_API_KEY === 'demo' || !process.env.ANTHROPIC_API_KEY ? 'DEMO' : 'PRODUCTION'}`);
   });
 }
 

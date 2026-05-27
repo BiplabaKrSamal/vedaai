@@ -1,21 +1,28 @@
 import IORedis from 'ioredis';
 
-let redis: IORedis;
+let redis: IORedis | null = null;
+let isDemo = false;
 
-export async function connectRedis(): Promise<IORedis> {
-  redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: null,
-  });
+export async function connectRedis(): Promise<void> {
+  const url = process.env.REDIS_URL;
 
+  if (!url || url === 'demo') {
+    isDemo = true;
+    console.log('✅ Redis (in-memory) — demo mode');
+    return;
+  }
+
+  redis = new IORedis(url, { maxRetriesPerRequest: null, lazyConnect: true });
   redis.on('connect', () => console.log('✅ Redis connected'));
   redis.on('error', (err) => console.error('Redis error:', err));
-
-  return redis;
+  await redis.connect();
 }
 
 export function getRedis(): IORedis {
-  if (!redis) throw new Error('Redis not initialized');
+  if (isDemo || !redis) throw new Error('DEMO_MODE');
   return redis;
 }
 
-export { redis };
+export function isDemoMode(): boolean {
+  return isDemo;
+}

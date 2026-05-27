@@ -1,10 +1,8 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
-# One-click deploy: https://render.com/deploy?repo=https://github.com/BiplabaKrSamal/vedaai
+# Render Blueprint — zero external dependencies, deploys instantly
+# https://render.com/deploy?repo=https://github.com/BiplabaKrSamal/vedaai
 
 services:
-  # ─────────────────────────────────────────────────────
-  # Backend API  (Node.js + Express)
-  # ─────────────────────────────────────────────────────
+  # ── API (Express + in-memory MongoDB + in-memory queue) ──────────────────
   - type: web
     name: vedaai-api
     runtime: node
@@ -19,21 +17,17 @@ services:
         value: production
       - key: PORT
         value: 10000
+      # Demo mode: no real API key, MongoDB, or Redis needed
       - key: ANTHROPIC_API_KEY
-        sync: false
+        value: demo
       - key: MONGODB_URI
-        sync: false
+        value: demo
       - key: REDIS_URL
-        fromService:
-          name: vedaai-redis
-          type: pserv
-          property: connectionString
+        value: demo
       - key: FRONTEND_URL
         value: https://vedaai-web.onrender.com
 
-  # ─────────────────────────────────────────────────────
-  # Frontend  (Next.js standalone)
-  # ─────────────────────────────────────────────────────
+  # ── Web (Next.js standalone) ─────────────────────────────────────────────
   - type: web
     name: vedaai-web
     runtime: node
@@ -54,13 +48,6 @@ services:
         value: https://vedaai-api.onrender.com
       - key: NEXT_PUBLIC_WS_URL
         value: wss://vedaai-api.onrender.com/ws
-
-  # ─────────────────────────────────────────────────────
-  # Redis  (private Docker service)
-  # ─────────────────────────────────────────────────────
-  - type: pserv
-    name: vedaai-redis
-    runtime: docker
-    region: oregon
-    plan: free
-    dockerfilePath: ./docker/redis.dockerfile
+      # Demo banner
+      - key: ANTHROPIC_API_KEY
+        value: demo

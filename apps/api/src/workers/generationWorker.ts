@@ -1,6 +1,4 @@
-import { Worker, Job } from 'bullmq';
-import { QUEUE_NAME } from '../services/queue';
-import { getRedis } from '../services/redis';
+import { createWorker } from '../services/queue';
 import { AssignmentModel } from '../models/Assignment';
 import { generatePaper } from '../services/aiService';
 import { broadcastToAssignment } from '../socket/wsServer';
@@ -11,64 +9,30 @@ export interface GenerationJobData {
   input: AssignmentInput;
 }
 
-export function startWorker(): void {
-  const worker = new Worker<GenerationJobData>(
-    QUEUE_NAME,
-    async (job: Job<GenerationJobData>) => {
-      const { assignmentId, input } = job.data;
+export async function startWorker(): Promise<void> {
+  await createWorker(
+    // handler
+    async (job) => {
+      const { assignmentId, input } = job.data as GenerationJobData;
       console.log(`🔄 Processing job ${job.id} for assignment ${assignmentId}`);
 
-      // Update status → processing
-      await AssignmentModel.findByIdAndUpdate(assignmentId, {
-        status: 'processing',
-      });
+      await AssignmentModel.findByIdAndUpdate(assignmentId, { status: 'processing' });
+      broadcastToAssignment({ type: 'job:processing', assignmentId });
 
-      broadcastToAssignment({
-        type: 'job:processing',
-        assignmentId,
-      });
-
-      // Generate paper via AI
       const paper = await generatePaper(assignmentId, input);
 
-      // Store result
-      await AssignmentModel.findByIdAndUpdate(assignmentId, {
-        status: 'completed',
-        paper,
-      });
+      await AssignmentModel.findByIdAndUpdate(assignmentId, { status: 'completed', paper });
+      broadcastToAssignment({ type: 'job:completed', assignmentId, data: paper });
 
-      // Notify frontend
-      broadcastToAssignment({
-        type: 'job:completed',
-        assignmentId,
-        data: paper,
-      });
-
-      console.log(`✅ Completed job ${job.id} for assignment ${assignmentId}`);
+      console.log(`✅ Completed job ${job.id}`);
       return paper;
     },
-    {
-      connection: getRedis(),
-      concurrency: 3,
+    // onFailed
+    async (job, err) => {
+      const { assignmentId } = job.data as GenerationJobData;
+      console.error(`❌ Job ${job.id} failed:`, err.message);
+      await AssignmentModel.findByIdAndUpdate(assignmentId, { status: 'failed', error: err.message });
+      broadcastToAssignment({ type: 'job:failed', assignmentId, data: { error: err.message } });
     }
   );
-
-  worker.on('failed', async (job, err) => {
-    if (!job) return;
-    const { assignmentId } = job.data;
-    console.error(`❌ Job ${job.id} failed:`, err.message);
-
-    await AssignmentModel.findByIdAndUpdate(assignmentId, {
-      status: 'failed',
-      error: err.message,
-    });
-
-    broadcastToAssignment({
-      type: 'job:failed',
-      assignmentId,
-      data: { error: err.message },
-    });
-  });
-
-  console.log('⚙️  BullMQ worker started');
 }
