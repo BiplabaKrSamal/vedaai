@@ -1,0 +1,21 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy API service
+        run: |
+          curl -s -o /dev/null -w "API deploy: %{http_code}\n" \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
+
+      - name: Deploy Web service
+        run: |
+          curl -s -o /dev/null -w "Web deploy: %{http_code}\n" \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"
