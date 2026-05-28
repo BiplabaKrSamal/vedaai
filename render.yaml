@@ -27,11 +27,13 @@ services:
     plan: free
     rootDir: .
     buildCommand: "npm install -g pnpm@9.14.2 && pnpm install --frozen-lockfile && pnpm --filter @vedaai/web build"
-    startCommand: "cd apps/web && node_modules/.bin/next start -p $PORT"
+    startCommand: "cd apps/web && node_modules/.bin/next start"
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
       - key: NEXT_PUBLIC_API_URL
         value: https://vedaai-api.onrender.com
       - key: NEXT_PUBLIC_WS_URL
