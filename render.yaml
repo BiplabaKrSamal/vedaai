@@ -1,12 +1,11 @@
 services:
   - type: web
     name: vedaai-api
-    runtime: node
+    runtime: docker
     region: oregon
     plan: free
-    rootDir: .
-    buildCommand: "bash scripts/render-build-api.sh"
-    startCommand: "node apps/api/dist/index.js"
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -19,15 +18,16 @@ services:
         value: demo
       - key: FRONTEND_URL
         value: https://vedaai-web.onrender.com
+      - key: PORT
+        value: 4000
 
   - type: web
     name: vedaai-web
-    runtime: node
+    runtime: docker
     region: oregon
     plan: free
-    rootDir: .
-    buildCommand: "bash scripts/render-build-web.sh"
-    startCommand: "cd apps/web && node_modules/.bin/next start"
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
