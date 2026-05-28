@@ -4,18 +4,17 @@
     "module": "commonjs",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "declaration": false,
+    "sourceMap": false,
+    "noEmit": true,
     "paths": {
       "@vedaai/shared": ["../../packages/shared/src/index.ts"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../../packages/shared/src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
